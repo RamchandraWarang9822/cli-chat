@@ -1,6 +1,10 @@
 import socket
 import threading
 
+def send_discovery_message(username):
+    discovery_message = f"{username} has joined the chat."
+    s.sendto(discovery_message.encode(), (broadcast_address, port))
+
 def send_messages(username):
     while True:
         message = input(f"{username} ({port}): ")
@@ -25,6 +29,9 @@ s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 s.bind(('0.0.0.0', port))
 
 print(f"Listening for messages on port {port}")
+
+# Send a discovery message when a peer joins
+send_discovery_message(username)
 
 # Create threads for sending and receiving messages
 send_thread = threading.Thread(target=send_messages, args=(username,))
