@@ -1,42 +1,38 @@
 import socket
 import threading
 
-def send_discovery_message(username):
-    discovery_message = f"{username} has joined the chat."
-    s.sendto(discovery_message.encode(), (broadcast_address, port))
+HOST = 'localhost'  # Use localhost when running server and client on the same machine
+PORT = 12345
 
-def send_messages(username):
+clients = []
+
+def handle_client(client_socket, username):
     while True:
-        message = input(f"{username} ({port}): ")
-        s.sendto(f"{username} ({port}): {message}".encode(), (broadcast_address, port))
+        data = client_socket.recv(1024)
+        if not data:
+            break
+        received_message = data.decode()
+        print(f"{username}: {received_message}")
 
-def receive_messages():
+def main():
+    username = input("Enter your username: ")
+
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((HOST, PORT))
+    clients.append(client_socket)
+
+    # Start a thread to handle incoming messages from the server
+    receive_thread = threading.Thread(target=handle_client, args=(client_socket, username))
+    receive_thread.start()
+
     while True:
-        data, _ = s.recvfrom(1024)
-        print(data.decode())
+        message = input()
+        if message.lower() == "exit":
+            break
+        client_socket.send(f"{username}: {message}".encode())
 
-port = 12345  # Use the same port number for all peers
-broadcast_address = '<broadcast>'  # Broadcast address to send to all peers
+    clients.remove(client_socket)
+    client_socket.close()
 
-# Get the username from the user
-username = input("Enter your username: ")
-
-# Create a UDP socket for broadcasting
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-# Bind the socket to the port for receiving
-s.bind(('0.0.0.0', port))
-
-print(f"Listening for messages on port {port}")
-
-# Send a discovery message when a peer joins
-send_discovery_message(username)
-
-# Create threads for sending and receiving messages
-send_thread = threading.Thread(target=send_messages, args=(username,))
-receive_thread = threading.Thread(target=receive_messages)
-
-# Start the threads
-send_thread.start()
-receive_thread.start()
+if __name__ == "__main__":
+    main()
