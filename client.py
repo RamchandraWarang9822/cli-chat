@@ -1,7 +1,7 @@
 import socket
 
 HOST = 'localhost'  # Use localhost when running server and client on the same machine
-PORT = 12345
+PORT = 12346
 
 def main():
     username = input("Enter your username: ")

@@ -1,8 +1,8 @@
 import socket
 import threading
 
-HOST = '0.0.0.0'  # Listen on all available network interfaces
-PORT = 12345
+HOST = 'localhost'  # Listen on all available network interfaces
+PORT = 12346
 
 def handle_client(client_socket, username):
     while True:
@@ -10,7 +10,7 @@ def handle_client(client_socket, username):
         if not data:
             break
         received_message = data.decode()
-        print(f"{username}: {received_message}")
+        print(f"{received_message}")
 
 def main():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
