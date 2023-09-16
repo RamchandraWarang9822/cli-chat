@@ -1,38 +1,112 @@
 import socket
 import threading
 
-HOST = 'localhost'  # Use localhost when running server and client on the same machine
-PORT = 12345
+class Server:
+    def __init__(self, ip, port):
+        self.ip = ip
+        self.port = port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clients = []
 
-clients = []
+    def start(self):
+        self.socket.bind((self.ip, self.port))
+        self.socket.listen()
 
-def handle_client(client_socket, username):
-    while True:
-        data = client_socket.recv(1024)
-        if not data:
-            break
-        received_message = data.decode()
-        print(f"{username}: {received_message}")
+        print(f"Server listening on {self.ip}:{self.port}")
 
-def main():
-    username = input("Enter your username: ")
+        while True:
+            client_socket, client_address = self.socket.accept()
+            print(f"Connected to {client_address}")
+            client_thread = threading.Thread(target=self.handle_client, args=(client_socket,))
+            client_thread.daemon = True
+            client_thread.start()
+            self.clients.append(client_socket)
 
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((HOST, PORT))
-    clients.append(client_socket)
+    def handle_client(self, client_socket):
+        while True:
+            try:
+                message = client_socket.recv(1024).decode()
+                if not message:
+                    self.clients.remove(client_socket)
+                    client_socket.close()
+                    break
+                print(f"Received from {client_socket.getpeername()}: {message}")
+                # Broadcast the message to all clients except the sender
+                for client in self.clients:
+                    if client != client_socket:
+                        client.send(message.encode())
+            except Exception as e:
+                print(f"Error handling client: {e}")
+                self.clients.remove(client_socket)
+                client_socket.close()
+                break
 
-    # Start a thread to handle incoming messages from the server
-    receive_thread = threading.Thread(target=handle_client, args=(client_socket, username))
-    receive_thread.start()
+class Client:
+    def __init__(self, server_ip, server_port):
+        self.server_ip = server_ip
+        self.server_port = server_port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    while True:
-        message = input()
-        if message.lower() == "exit":
-            break
-        client_socket.send(f"{username}: {message}".encode())
+    def connect_to_server(self):
+        try:
+            self.socket.connect((self.server_ip, self.server_port))
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+        return True
 
-    clients.remove(client_socket)
-    client_socket.close()
+    def send_message(self, message):
+        try:
+            self.socket.send(message.encode())
+        except Exception as e:
+            print(f"Error sending message: {e}")
+
+    def receive_messages(self):
+        while True:
+            try:
+                message = self.socket.recv(1024).decode()
+                print(f"Received: {message}")
+            except Exception as e:
+                print(f"Error receiving message: {e}")
+                break
+
+    def start(self):
+        if self.connect_to_server():
+            receive_thread = threading.Thread(target=self.receive_messages)
+            receive_thread.daemon = True
+            receive_thread.start()
+
+            while True:
+                message = input()
+                self.send_message(message)
 
 if __name__ == "__main__":
-    main()
+    # Automatically detect the server IP on the local network
+    server_ip = None
+    try:
+        # Use a known hostname to get the local IP address
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("google.com", 80))
+        server_ip = s.getsockname()[0]
+        s.close()
+    except Exception as e:
+        print(f"Error detecting server IP: {e}")
+
+    if server_ip:
+        print(f"Detected server IP: {server_ip}")
+        server = Server(server_ip, 12345)  # Replace 12345 with your desired port
+        server_thread = threading.Thread(target=server.start)
+        server_thread.daemon = True
+        server_thread.start()
+
+        while True:
+            choice = input("Enter 'c' to start a client or 'q' to quit: ")
+            if choice == 'c':
+                client = Client(server_ip, 12345)  # Replace 12345 with the server's port
+                client.start()
+            elif choice == 'q':
+                break
+            else:
+                print("Invalid choice. Enter 'c' to start a client or 'q' to quit.")
+    else:
+        print("Server IP detection failed.")
