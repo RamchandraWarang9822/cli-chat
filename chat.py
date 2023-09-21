@@ -1,4 +1,3 @@
-
 import socket
 import threading
 
@@ -40,7 +39,29 @@ class Server:
                 print(f"Error handling client: {e}")
                 self.clients.remove(client_socket)
                 client_socket.close()
-                break
+
+def broadcast_discovery_request(port):
+    broadcast_ip = "255.255.255.255"
+    discovery_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    discovery_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    discovery_socket.bind(('0.0.0.0', port))
+
+    connected_clients = 0
+    max_clients = 2  # Adjust as needed (the number of expected clients)
+
+    while connected_clients < max_clients:
+        discovery_socket.sendto(b"DiscoveryRequest", (broadcast_ip, port))
+        print("Broadcasted discovery request")
+        try:
+            data, _ = discovery_socket.recvfrom(1024)
+            if data.decode() == "DiscoveryResponse":
+                print("Received discovery response")
+                connected_clients += 1
+        except Exception as e:
+            pass
+
+    print("All clients connected. Stopping discovery.")
+    discovery_socket.close()
 
 class Client:
     def __init__(self, server_ip, server_port):
@@ -81,17 +102,6 @@ class Client:
                 message = input()
                 self.send_message(message)
 
-def broadcast_discovery_request(port):
-    broadcast_ip = "255.255.255.255"
-    discovery_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    discovery_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    discovery_socket.bind(('0.0.0.0', port))
-
-    while True:
-        discovery_socket.sendto(b"DiscoveryRequest", (broadcast_ip, port))
-        print("Broadcasted discovery request")
-        time.sleep(5)  # Adjust the interval as needed
-
 if __name__ == "__main__":
     import time
 
@@ -120,7 +130,10 @@ if __name__ == "__main__":
         while True:
             choice = input("Enter 'c' to start a client or 'q' to quit: ")
             if choice == 'c':
-                client = Client(server_ip, 12345)  # Replace 12345 with the server's port
+                # Enter the IP address and port of the peer's server
+                peer_server_ip = input("Enter the peer's server IP address: ")
+                peer_server_port = int(input("Enter the peer's server port: "))
+                client = Client(peer_server_ip, peer_server_port)
                 client.start()
             elif choice == 'q':
                 break
@@ -128,5 +141,3 @@ if __name__ == "__main__":
                 print("Invalid choice. Enter 'c' to start a client or 'q' to quit.")
     else:
         print("Server IP detection failed.")
-
-
