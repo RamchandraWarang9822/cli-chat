@@ -80,20 +80,7 @@ class Client:
                 message = input()
                 self.send_message(message)
 
-def broadcast_discovery_request(port):
-    broadcast_ip = "255.255.255.255"
-    discovery_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    discovery_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    discovery_socket.bind(('0.0.0.0', port))
-
-    while True:
-        discovery_socket.sendto(b"DiscoveryRequest", (broadcast_ip, port))
-        print("Broadcasted discovery request")
-        time.sleep(5)  # Adjust the interval as needed
-
 if __name__ == "__main__":
-    import time
-
     # Automatically detect the server IP on the local network
     server_ip = None
     try:
@@ -111,10 +98,6 @@ if __name__ == "__main__":
         server_thread = threading.Thread(target=server.start)
         server_thread.daemon = True
         server_thread.start()
-
-        discovery_thread = threading.Thread(target=broadcast_discovery_request, args=(12346,))
-        discovery_thread.daemon = True
-        discovery_thread.start()
 
         while True:
             choice = input("Enter 'c' to start a client or 'q' to quit: ")
